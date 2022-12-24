@@ -5,6 +5,7 @@
  
 from flask import Flask, url_for, redirect,session
 from authlib.integrations.flask_client import OAuth
+from db import UOWManager, CreateDataBase
 import os
 from auth_decorator import login_required
  
@@ -14,6 +15,7 @@ app.secret_key = 'secret key'
  
 app.config['SERVER_NAME'] = 'localhost:5000'
 os.environ['AUTHLIB_INSECURE_TRANSPORT'] = '1'
+app.config ['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.sqlite3'
 oauth = OAuth(app)
  
 google = oauth.register(
@@ -34,6 +36,8 @@ google = oauth.register(
 @login_required
 def hello_world():
     email=dict(session).get('email',None)
+    if email:
+            db.get_user_creds()
     return f'Hello {email}!'
 
 
@@ -48,7 +52,7 @@ def logout():
     for key in list(session.keys()):
         session.pop(key)
     return redirect('/')
-    
+
 @app.route('/authorize')
 def authorize():
     google = oauth.create_client('google')
@@ -61,3 +65,6 @@ def authorize():
 
 if __name__ == "__main__":
     app.run(debug=True)
+    uow = UOWManager()
+    curr = uow.get_cursor()
+    db = CreateDataBase(cursor=curr)

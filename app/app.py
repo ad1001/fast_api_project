@@ -1,8 +1,3 @@
-
-# The user details get print in the console.
-# so you can do whatever you want to do instead
-# of printing it
- 
 from flask import Flask, url_for, redirect,session, request
 from authlib.integrations.flask_client import OAuth
 import os

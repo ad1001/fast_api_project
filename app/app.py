@@ -3,25 +3,30 @@
 # so you can do whatever you want to do instead
 # of printing it
  
-from flask import Flask, url_for, redirect,session
+from flask import Flask, url_for, redirect,session, request
 from authlib.integrations.flask_client import OAuth
-from db import UOWManager, CreateDataBase
 import os
 from auth_decorator import login_required
+import finnhub
+
+from redis import Redis
+
+r = Redis(
+    host='redis',
+    port=6379
+    )
  
 app = Flask(__name__)
 app.secret_key = 'secret key'
- 
- 
-app.config['SERVER_NAME'] = 'localhost:5000'
+finnhub_client = finnhub.Client(api_key="FINHUB_KEY")
+
 os.environ['AUTHLIB_INSECURE_TRANSPORT'] = '1'
-app.config ['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.sqlite3'
 oauth = OAuth(app)
  
 google = oauth.register(
     name='google',
-    client_id='278792377886-53hdm5ov9gvq1itic47rbmom3gndl1cn.apps.googleusercontent.com',
-    client_secret='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',
+    client_id='GOOGLE_CLIENT_ID',
+    client_secret='GOOGLE_SECRET_ID',
     access_token_url='https://accounts.google.com/o/oauth2/token',
     access_token_params=None,
     authorize_url='https://accounts.google.com/o/oauth2/auth',
@@ -31,15 +36,22 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'},
 )
 
-
 @app.route('/')
 @login_required
 def hello_world():
     email=dict(session).get('email',None)
     if email:
-            db.get_user_creds()
-    return f'Hello {email}!'
-
+        symbol = request.args.get('symbol') 
+        if symbol == '' or not symbol:
+                return f'Hello {email} please send a symbol to check value!'
+        if r.exists(f'{symbol}'):
+            return r.get(f'{symbol}')
+        else:
+            value = str(finnhub_client.company_profile2(symbol=symbol))
+            if value == '{}':
+                return value
+            r.set(f'{symbol}',value)            
+            return str(value)     
 
 @app.route('/login')
 def login():
@@ -59,12 +71,9 @@ def authorize():
     token = google.authorize_access_token()
     resp = google.get('userinfo',token=token)
     user_info = resp.json()
-    # do something with the token and profile
     session['email'] = user_info['email']
     return redirect('/')
 
 if __name__ == "__main__":
     app.run(debug=True)
-    uow = UOWManager()
-    curr = uow.get_cursor()
-    db = CreateDataBase(cursor=curr)
+    

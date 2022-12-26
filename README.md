@@ -1,4 +1,4 @@
-# fast_api_project
+# flask_api_project
 
 * replace finhub api key, google client id and secret key
 * use docker compose up to build and start docker containers 
